@@ -52,7 +52,7 @@ jobs:
                     echo "using following project $PROJECT_ID" &&
                     ./node_modules/.bin/firebase use $PROJECT_ID --token $FIREBASE_DEPLOY_TOKEN &&
                     echo 'deploying' &&
-                    ./node_modules/.bin/firebase deploy --only hosting --token $FIREBASE_DEPLOY_TOKEN || {echo "something went wrong & exiting" exit 1;}
+                    ./node_modules/.bin/firebase deploy --only hosting --token $FIREBASE_DEPLOY_TOKEN || { echo "something went wrong & exiting" exit 1; }
       - ft-healthcheck-validator/validate:
           healthcheck-url: ' https://${PROJECT_ID}.web.app'
 workflows:
