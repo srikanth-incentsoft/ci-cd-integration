@@ -35,7 +35,7 @@ jobs:
           command: npm test
       - run:
           name: Build Frontend
-          command: npm run build && ls -lrt && pwd
+          command: npm run build && ls -lrt && pwd && mkdir -p /tmp/project
       -  persist_to_workspace:
           root: /tmp/project
           paths:
