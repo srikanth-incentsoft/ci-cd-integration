@@ -12,6 +12,7 @@ orbs:
   # Orbs reduce the amount of configuration required for common tasks.
   # See the orb documentation here: https://circleci.com/developer/orbs/orb/circleci/node
   node: circleci/node@4.7
+  ft-healthcheck-validator: financial-times/ft-healthcheck-validator@1.1.4
 
 jobs:
   # Below is the definition of your job to build and test your app, you can rename and customize it as you want.
@@ -47,10 +48,13 @@ jobs:
           at: ~/project
       - run:
           name: Deploy Frontend
-          command: echo 'deploying'
-      - run:
-          name: list files
-          command: ls -lrt && pwd
+          command: |
+                    echo "using following project $PROJECT_ID" &&
+                    ./node_modules/.bin/firebase use $PROJECT_ID --token $FIREBASE_DEPLOY_TOKEN &&
+                    echo 'deploying' &&
+                    ./node_modules/.bin/firebase deploy --only hosting --token $FIREBASE_DEPLOY_TOKEN || {echo "something went wrong & exiting" exit 1;}
+      - ft-healthcheck-validator/validate:
+          healthcheck-url: ' https://${PROJECT_ID}.web.app'
 workflows:
   # Below is the definition of your workflow.
   # Inside the workflow, you provide the jobs you want to run, e.g this workflow runs the build-and-test job above.
