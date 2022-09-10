@@ -2,6 +2,12 @@
 # See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
 
+executors:
+  my-executor:
+    docker:
+      - image: cimg/node:16.10
+    working_directory: /tmp
+    
 orbs:
   # The Node.js orb contains a set of prepackaged CircleCI configuration you can utilize
   # Orbs reduce the amount of configuration required for common tasks.
@@ -14,8 +20,7 @@ jobs:
     # These next lines define a Docker executor: https://circleci.com/docs/2.0/executor-types/
     # You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # A list of available CircleCI Docker Convenience Images are available here: https://circleci.com/developer/images/image/cimg/node
-    docker:
-      - image: cimg/node:16.10
+    executor: my-executor
     # Then run your tests!
     # CircleCI will report the results back to your VCS provider.
     steps:
@@ -33,13 +38,12 @@ jobs:
           name: Build Frontend
           command: npm run build && ls -lrt && pwd
       -  persist_to_workspace:
-          root: ~/project
+          root: /tmp/project
           paths:
             - .
   deploy_frontend:
-    docker:
-      - image: cimg/node:16.10
-    working_directory: ~/project
+    executor: my-executor
+    working_directory: /tmp/project
     steps:
       - run:
           name: Deploy Frontend
