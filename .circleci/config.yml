@@ -37,13 +37,14 @@ jobs:
           name: Build Frontend
           command: npm run build && ls -lrt && pwd && mkdir -p /tmp/project
       -  persist_to_workspace:
-          root: /tmp/project
+          root: ~/project
           paths:
             - .
   deploy_frontend:
     executor: my-executor
-    working_directory: /tmp/project
     steps:
+      - attach_workspace:
+          at: ~/project
       - run:
           name: Deploy Frontend
           command: echo 'deploying'
