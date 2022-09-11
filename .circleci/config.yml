@@ -61,7 +61,7 @@ jobs:
           command: npm test
       - run:
           name: Build Frontend
-          command: npm run build && ls -lrt && pwd && mkdir -p /tmp/project
+          command: npm run build && ls -lrt && pwd
       -  persist_to_workspace:
           root: ~/project
           paths:
@@ -84,6 +84,24 @@ jobs:
                    echo "doing health check" &&
                    status=`curl https://${PROJECT_ID}.web.app -k -s -f -o /dev/null && echo "SUCCESS" || echo "ERROR"` &&   
                    [[ $status != "SUCCESS" ]] && { echo "Health check is not successful"; exit 1; } || echo " Health is good"
+  functions_build_and_test:
+    executor: my-executor
+    # Then run your tests!
+    # CircleCI will report the results back to your VCS provider.
+    working_directory: functions
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Run tests
+          command: pwd && ls -lrt
+      - run:
+          name: Build Frontend
+          command: npm run build && ls -lrt && pwd
+      -  persist_to_workspace:
+          root: ~/project
+          paths:
+            - .
   # build_functions:
   #   executor: my-executor
   #   steps:
@@ -99,7 +117,10 @@ workflows:
       - install_deps_frontend_and_functions
       - frontend_build_and_test:
           requires:
-            - install_deps_frontend_and_functions 
+            - install_deps_frontend_and_functions
+      - functions_build_and_test:
+          requires:
+            - install_deps_frontend_and_functions
       - frontend_deploy:
           requires:
             - frontend_build_and_test # only deploy if the build_and_test job has completed
