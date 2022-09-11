@@ -105,7 +105,7 @@ jobs:
           command: pwd && ls -lrt
       - run:
           name: Build Functions
-          command: npm run build && ls -lrt && pwd
+          command: npm run build && ls -lrt && pwd && mkdir -p /home/circleci/project2
       -  persist_to_workspace:
           root: ~/project2
           paths:
