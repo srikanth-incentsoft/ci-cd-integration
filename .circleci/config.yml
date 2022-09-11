@@ -7,6 +7,18 @@ executors:
     docker:
       - image: cimg/node:16.10
 commands:
+  health_check:
+      parameters:
+        url:
+          default: "."
+          type: string
+      steps:
+        - run:
+            name: Health check
+            command: |
+                    echo "doing health check" &&
+                    status=`curl <<parameters.url>> -k -s -f -o /dev/null && echo "SUCCESS" || echo "ERROR"` &&   
+                    [[ $status != "SUCCESS" ]] && { echo "Health check is not successful"; exit 1; } || echo " Health is good"
   install_deps:
     parameters:
       location:
@@ -72,21 +84,14 @@ jobs:
       - attach_workspace:
           at: ~/project
       - run:
-          name: TESTiNG
-          command: pwd && ls -lrt
-      - run:
           name: Deploy Frontend
           command: |
                     echo "using following project $PROJECT_ID" &&
                     ./node_modules/.bin/firebase use $PROJECT_ID --token $FIREBASE_DEPLOY_TOKEN &&
                     echo 'deploying' &&
                     ./node_modules/.bin/firebase deploy --only hosting --token $FIREBASE_DEPLOY_TOKEN || { echo "something went wrong & exiting" exit 1; }
-      - run:
-          name: Healtch check
-          command: |
-                   echo "doing health check" &&
-                   status=`curl https://${PROJECT_ID}.web.app -k -s -f -o /dev/null && echo "SUCCESS" || echo "ERROR"` &&   
-                   [[ $status != "SUCCESS" ]] && { echo "Health check is not successful"; exit 1; } || echo " Health is good"
+      - health_check:
+          url: https://${PROJECT_ID}.web.app
   functions_build_and_test:
     executor: my-executor
     # Then run your tests!
@@ -111,13 +116,14 @@ jobs:
       - attach_workspace:
           at: ~/project
       - run:
-          name: test
-          command: pwd && ls -lrt && cd functions && ls -lrt
-  # build_functions:
-  #   executor: my-executor
-  #   steps:
-
-  # deploy_functions:
+            name: Deploy Functions
+            command: |
+                      echo "using following project $PROJECT_ID" &&
+                      ./node_modules/.bin/firebase use $PROJECT_ID --token $FIREBASE_DEPLOY_TOKEN &&
+                      echo 'deploying' &&
+                      ./node_modules/.bin/firebase deploy --only functions --token $FIREBASE_DEPLOY_TOKEN || { echo "something went wrong & exiting" exit 1; }
+      - health_check:
+          url: https://us-central1-ci-cd-poc-e8e8a.cloudfunctions.net/helloWorld
 workflows:
   # Below is the definition of your workflow.
   # Inside the workflow, you provide the jobs you want to run, e.g this workflow runs the build-and-test job above.
@@ -138,7 +144,7 @@ workflows:
       - frontend_deploy:
           requires:
             - frontend_build_and_test # only deploy if the build_and_test job has completed
-          # filters:
-          #   branches:
-          #     only:
-          #       - main
+          filters:
+            branches:
+              only:
+                - main
