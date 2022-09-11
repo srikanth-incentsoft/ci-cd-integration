@@ -113,11 +113,11 @@ jobs:
     executor: my-executor
     steps:
       - attach_workspace:
-          at: ~/project2
+          at: ~/project
       - run:
             name: Deploy Functions
             command: |
-                      cd ~/project2 && ls -lrt &&
+                      cd ~/project && ls -lrt &&
                       echo "using following project $PROJECT_ID" &&
                       ./node_modules/.bin/firebase use $PROJECT_ID --token $FIREBASE_DEPLOY_TOKEN &&
                       echo 'deploying' &&
