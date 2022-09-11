@@ -6,7 +6,30 @@ executors:
   my-executor:
     docker:
       - image: cimg/node:16.10
-    
+commands:
+  health_check:
+      parameters:
+        url:
+          default: "."
+          type: string
+      steps:
+        - run:
+            name: Health check
+            command: |
+                    echo "doing health check" &&
+                    status=`curl <<parameters.url>> -k -s -f -o /dev/null && echo "SUCCESS" || echo "ERROR"` &&   
+                    [[ $status != "SUCCESS" ]] && { echo "Health check is not successful"; exit 1; } || echo " Health is good"
+  install_deps:
+    parameters:
+      location:
+        default: "."
+        type: string
+    steps:
+      - run:
+          name: "install deps <<parameters.location>>"
+          command: |
+                   cd <<parameters.location>> && npm ci && pwd
+
 orbs:
   # The Node.js orb contains a set of prepackaged CircleCI configuration you can utilize
   # Orbs reduce the amount of configuration required for common tasks.
@@ -15,7 +38,27 @@ orbs:
 
 jobs:
   # Below is the definition of your job to build and test your app, you can rename and customize it as you want.
-  build_and_test:
+  install_deps_frontend_and_functions:
+    executor: my-executor
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-npm-deps-{{ .Branch }}-{{ checksum "package.json" }}-{{ checksum "package-lock.json" }}-{{ checksum "functions/package.json"}}-{{ checksum "functions/package-lock.json"}}
+      #install at root directory for frontend
+      - install_deps
+      #install at functions directory for backend
+      - install_deps:
+          location: "functions"
+      - save_cache:
+          paths:
+            - ~/.npm
+          key: v1-npm-deps-{{ .Branch }}-{{ checksum "package.json" }}-{{ checksum "package-lock.json" }}-{{ checksum "functions/package.json"}}-{{ checksum "functions/package-lock.json"}}
+      -  persist_to_workspace:
+          root: ~/project
+          paths:
+            - .
+  frontend_build_and_test:
     # These next lines define a Docker executor: https://circleci.com/docs/2.0/executor-types/
     # You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # A list of available CircleCI Docker Convenience Images are available here: https://circleci.com/developer/images/image/cimg/node
@@ -23,24 +66,19 @@ jobs:
     # Then run your tests!
     # CircleCI will report the results back to your VCS provider.
     steps:
-      # Checkout the code as the first step.
-      - checkout
-      # Next, the node orb's install-packages step will install the dependencies from a package.json.
-      # The orb install-packages step will also automatically cache them for faster future runs.
-      - node/install-packages:
-          # If you are using yarn, change the line below from "npm" to "yarn"
-          pkg-manager: npm
+      - attach_workspace:
+          at: ~/project
       - run:
           name: Run tests
           command: npm test
       - run:
           name: Build Frontend
-          command: npm run build && ls -lrt && pwd && mkdir -p /tmp/project
+          command: npm run build && ls -lrt && pwd
       -  persist_to_workspace:
           root: ~/project
           paths:
             - .
-  deploy_frontend:
+  frontend_deploy:
     executor: my-executor
     steps:
       - attach_workspace:
@@ -52,23 +90,64 @@ jobs:
                     ./node_modules/.bin/firebase use $PROJECT_ID --token $FIREBASE_DEPLOY_TOKEN &&
                     echo 'deploying' &&
                     ./node_modules/.bin/firebase deploy --only hosting --token $FIREBASE_DEPLOY_TOKEN || { echo "something went wrong & exiting" exit 1; }
+      - health_check:
+          url: https://${PROJECT_ID}.web.app
+  functions_build_and_test:
+    executor: my-executor
+    # Then run your tests!
+    # CircleCI will report the results back to your VCS provider.
+    steps:
+      - attach_workspace:
+          at: ~/project
       - run:
-          name: Healtch check
-          command: |
-                   echo "doing health check" &&
-                   status=`curl https://${PROJECT_ID}.web.app -k -s -f -o /dev/null && echo "SUCCESS" || echo "ERROR"` &&   
-                   [[ $status != "SUCCESS" ]] && { echo "Health check is not successful"; exit 1; } || echo " Health is good"
+          name: Run tests
+          command: cd functions && pwd && ls -lrt
+      - run:
+          name: Build Functions
+          command: cd functions && npm run build && ls -lrt && pwd && mkdir -p /home/circleci/project2
+      -  persist_to_workspace:
+          root: ~/project
+          paths:
+            - .
+  functions_deploy:
+    executor: my-executor
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+            name: Deploy Functions
+            command: |
+                      cd ~/project && ls -lrt &&
+                      echo "using following project $PROJECT_ID" &&
+                      ./node_modules/.bin/firebase use $PROJECT_ID --token $FIREBASE_DEPLOY_TOKEN &&
+                      echo 'deploying' &&
+                      ./node_modules/.bin/firebase deploy --only functions --token $FIREBASE_DEPLOY_TOKEN || { echo "something went wrong & exiting" exit 1; }
+      - health_check:
+          url: https://us-central1-ci-cd-poc-e8e8a.cloudfunctions.net/helloWorld
 workflows:
   # Below is the definition of your workflow.
   # Inside the workflow, you provide the jobs you want to run, e.g this workflow runs the build-and-test job above.
   # CircleCI will run this workflow on every commit.
   # For more details on extending your workflow, see the configuration docs: https://circleci.com/docs/2.0/configuration-reference/#workflows
-  frontend:
+  build_and_deploy:
     jobs:
-      - build_and_test
-      - deploy_frontend:
+      - install_deps_frontend_and_functions
+      - frontend_build_and_test:
           requires:
-            - build_and_test # only deploy if the build_and_test job has completed
+            - install_deps_frontend_and_functions
+      - functions_build_and_test:
+          requires:
+            - install_deps_frontend_and_functions
+      - functions_deploy:
+          requires:
+            - functions_build_and_test
+          filters:
+            branches:
+              only:
+                - main
+      - frontend_deploy:
+          requires:
+            - frontend_build_and_test # only deploy if the build_and_test job has completed
           filters:
             branches:
               only:
