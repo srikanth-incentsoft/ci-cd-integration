@@ -96,12 +96,18 @@ jobs:
           name: Run tests
           command: pwd && ls -lrt
       - run:
-          name: Build Frontend
+          name: Build Functions
           command: npm run build && ls -lrt && pwd
       -  persist_to_workspace:
           root: ~/project
           paths:
             - .
+  functions_deploy:
+    executor: my-executor
+    steps:
+      - run:
+          name: test
+          command: pwd && ls-lrt && cd functions && ls -lrt
   # build_functions:
   #   executor: my-executor
   #   steps:
@@ -121,6 +127,9 @@ workflows:
       - functions_build_and_test:
           requires:
             - install_deps_frontend_and_functions
+      - functions_deploy:
+          requires:
+            - functions_build_and_test
       - frontend_deploy:
           requires:
             - frontend_build_and_test # only deploy if the build_and_test job has completed
