@@ -13,10 +13,10 @@ commands:
         default: "."
         type: string
     steps:
-      - node/install-packages:
-          # If you are using yarn, change the line below from "npm" to "yarn"
-          pkg-manager: npm
-          app-dir: <<parameters.location>>
+      - run:
+          name: "install deps <<parameters.location>>"
+          command: |
+                   cd <<parameters.location>> && npm ci && pwd
 
 orbs:
   # The Node.js orb contains a set of prepackaged CircleCI configuration you can utilize
@@ -90,7 +90,9 @@ workflows:
   build_and_deploy:
     jobs:
       - install_deps_frontend_and_functions
-      - frontend_build_and_test
+      - frontend_build_and_test:
+          requires:
+            - install_deps_frontend_and_functions 
       - frontend_deploy:
           requires:
             - frontend_build_and_test # only deploy if the build_and_test job has completed
