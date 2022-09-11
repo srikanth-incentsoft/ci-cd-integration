@@ -6,7 +6,18 @@ executors:
   my-executor:
     docker:
       - image: cimg/node:16.10
-    
+commands:
+  install_deps:
+    parameters:
+      location:
+        default: "."
+        type: string
+    steps:
+      - node/install-packages:
+          # If you are using yarn, change the line below from "npm" to "yarn"
+          pkg-manager: npm
+          app-dir: <<parameters.location>>
+
 orbs:
   # The Node.js orb contains a set of prepackaged CircleCI configuration you can utilize
   # Orbs reduce the amount of configuration required for common tasks.
@@ -27,9 +38,8 @@ jobs:
       - checkout
       # Next, the node orb's install-packages step will install the dependencies from a package.json.
       # The orb install-packages step will also automatically cache them for faster future runs.
-      - node/install-packages:
-          # If you are using yarn, change the line below from "npm" to "yarn"
-          pkg-manager: npm
+      - install_deps
+
       - run:
           name: Run tests
           command: npm test
@@ -58,6 +68,11 @@ jobs:
                    echo "doing health check" &&
                    status=`curl https://${PROJECT_ID}.web.app -k -s -f -o /dev/null && echo "SUCCESS" || echo "ERROR"` &&   
                    [[ $status != "SUCCESS" ]] && { echo "Health check is not successful"; exit 1; } || echo " Health is good"
+  # build_functions:
+  #   executor: my-executor
+  #   steps:
+
+  # deploy_functions:
 workflows:
   # Below is the definition of your workflow.
   # Inside the workflow, you provide the jobs you want to run, e.g this workflow runs the build-and-test job above.
