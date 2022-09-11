@@ -96,20 +96,19 @@ jobs:
     executor: my-executor
     # Then run your tests!
     # CircleCI will report the results back to your VCS provider.
-    working_directory: functions
     steps:
       - attach_workspace:
           at: ~/project
       - run:
           name: Run tests
-          command: pwd && ls -lrt
+          command: cd functions && pwd && ls -lrt
       - run:
           name: Build Functions
-          command: npm run build && ls -lrt && pwd && mkdir -p /home/circleci/project2
+          command: cd functions && npm run build && ls -lrt && pwd && mkdir -p /home/circleci/project2
       -  persist_to_workspace:
-          root: ~/project2
+          root: ~/project
           paths:
-            - ~/project
+            - .
   functions_deploy:
     executor: my-executor
     steps:
