@@ -26,7 +26,20 @@ orbs:
 
 jobs:
   # Below is the definition of your job to build and test your app, you can rename and customize it as you want.
-  build_and_test:
+  install_deps_frontend_and_functions:
+    executor: my-executor
+    steps:
+      - checkout
+      #install at root directory for frontend
+      - install_deps
+      #install at functions directory for backend
+      - install_deps:
+          location: "functions"
+      -  persist_to_workspace:
+          root: ~/project
+          paths:
+            - .
+  frontend_build_and_test:
     # These next lines define a Docker executor: https://circleci.com/docs/2.0/executor-types/
     # You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # A list of available CircleCI Docker Convenience Images are available here: https://circleci.com/developer/images/image/cimg/node
@@ -34,12 +47,8 @@ jobs:
     # Then run your tests!
     # CircleCI will report the results back to your VCS provider.
     steps:
-      # Checkout the code as the first step.
-      - checkout
-      # Next, the node orb's install-packages step will install the dependencies from a package.json.
-      # The orb install-packages step will also automatically cache them for faster future runs.
-      - install_deps
-
+      - attach_workspace:
+          at: ~/project
       - run:
           name: Run tests
           command: npm test
@@ -50,7 +59,7 @@ jobs:
           root: ~/project
           paths:
             - .
-  deploy_frontend:
+  frontend_deploy:
     executor: my-executor
     steps:
       - attach_workspace:
@@ -78,12 +87,13 @@ workflows:
   # Inside the workflow, you provide the jobs you want to run, e.g this workflow runs the build-and-test job above.
   # CircleCI will run this workflow on every commit.
   # For more details on extending your workflow, see the configuration docs: https://circleci.com/docs/2.0/configuration-reference/#workflows
-  frontend:
+  build_and_deploy:
     jobs:
-      - build_and_test
-      - deploy_frontend:
+      - install_deps_frontend_and_functions
+      - frontend_build_and_test
+      - frontend_deploy:
           requires:
-            - build_and_test # only deploy if the build_and_test job has completed
+            - frontend_build_and_test # only deploy if the build_and_test job has completed
           filters:
             branches:
               only:
