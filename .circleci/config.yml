@@ -141,6 +141,10 @@ workflows:
       - functions_deploy:
           requires:
             - functions_build_and_test
+          filters:
+            branches:
+              only:
+                - main
       - frontend_deploy:
           requires:
             - frontend_build_and_test # only deploy if the build_and_test job has completed
