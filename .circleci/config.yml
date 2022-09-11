@@ -107,17 +107,18 @@ jobs:
           name: Build Functions
           command: npm run build && ls -lrt && pwd
       -  persist_to_workspace:
-          root: ~/project
+          root: ~/project2
           paths:
             - .
   functions_deploy:
     executor: my-executor
     steps:
       - attach_workspace:
-          at: ~/project
+          at: ~/project2
       - run:
             name: Deploy Functions
             command: |
+                      cd ~/project2 && ls -lrt &&
                       echo "using following project $PROJECT_ID" &&
                       ./node_modules/.bin/firebase use $PROJECT_ID --token $FIREBASE_DEPLOY_TOKEN &&
                       echo 'deploying' &&
